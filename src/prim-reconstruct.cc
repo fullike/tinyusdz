@@ -3889,7 +3889,7 @@ bool ReconstructPrim<GeomSubset>(
   }
 
   for (const auto &prop : properties) {
-    PARSE_TYPED_ATTRIBUTE(table, prop, "familyName", GeomSubset, subset->familyName)
+    //PARSE_TYPED_ATTRIBUTE(table, prop, "familyName", GeomSubset, subset->familyName)
     PARSE_TYPED_ATTRIBUTE(table, prop, "indices", GeomSubset, subset->indices)
     PARSE_UNIFORM_ENUM_PROPERTY(table, prop, "elementType", GeomSubset::ElementType, ElementTypeHandler, GeomSubset, subset->elementType, options.strict_allowedToken_check)
     ADD_PROPERTY(table, prop, GeomSubset, subset->props)

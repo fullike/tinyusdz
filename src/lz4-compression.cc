@@ -239,7 +239,7 @@ size_t LZ4Compression::DecompressFromBuffer(char const *compressedPtr,
         return 0;
       }
       //std::cout << "nDecompressed = " << nDecompressed << "\n";
-      if (nDecompressed > maxOutputSize) {
+      if (size_t(nDecompressed) > maxOutputSize) {
         if (err) {
           (*err) =
               "Failed to decompress data, possibly corrupt?\n";

@@ -1798,18 +1798,18 @@ nonstd::optional<Prim> USDCReader::Impl::ReconstructPrimFromTypeName(
   if (typeName == "Model" || typeName == "__AnyType__") {
     // Code is mostly identical to RECONSTRUCT_PRIM.
     // Difference is store primTypeName to Model class itself.
-    Model typed_prim;
+    Xform typed_prim;
     if (!ReconstructPrim(spec, node, psmap, &typed_prim)) {
       PUSH_ERROR("Failed to reconstruct Model");
       return nonstd::nullopt;
     }
     typed_prim.meta = meta;
     typed_prim.name = prim_name;
-    if (typeName == "__AnyType__") {
-      typed_prim.prim_type_name = "";
-    } else {
-      typed_prim.prim_type_name = primTypeName;
-    }
+    // if (typeName == "__AnyType__") {
+    //   typed_prim.prim_type_name = "";
+    // } else {
+    //   typed_prim.prim_type_name = primTypeName;
+    // }
     typed_prim.spec = spec;
     typed_prim.propertyNames() = properties;
     typed_prim.primChildrenNames() = primChildren;

@@ -42,6 +42,7 @@
 #include "usdGeom.hh"
 #include "usdShade.hh"
 #include "value-pprint.hh"
+#include "io-util.hh"
 
 #if defined(TINYUSDZ_WITH_COLORIO)
 #include "external/tiny-color-io.h"
@@ -5240,7 +5241,7 @@ bool MeshVisitor(const tinyusdz::Path &abs_path, const tinyusdz::Prim &prim,
           visitorEnv->converter->materials;
 
       const auto matIt = visitorEnv->converter->materialMap.find(
-          bound_material_path.full_path_name());
+        visitorEnv->env->usd_filename + bound_material_path.full_path_name());
 
       if (matIt != visitorEnv->converter->materialMap.s_end()) {
         // Got material in the cache.
@@ -5271,7 +5272,7 @@ bool MeshVisitor(const tinyusdz::Path &abs_path, const tinyusdz::Prim &prim,
             (*err) += fmt::format("Material conversion failed: {}",
                                   bound_material_path);
           }
-          return false;
+          //return false;
         }
 
         // Assign new material ID
@@ -5286,7 +5287,7 @@ bool MeshVisitor(const tinyusdz::Path &abs_path, const tinyusdz::Prim &prim,
         rmaterial_id = int64_t(mat_id);
 
         visitorEnv->converter->materialMap.add(
-            bound_material_path.full_path_name(), uint64_t(rmaterial_id));
+          visitorEnv->env->usd_filename + bound_material_path.full_path_name(), uint64_t(rmaterial_id));
         DCOUT("Added renderMaterial: " << mat_id << " " << rmat.abs_path
                                        << " ( " << rmat.name << " ) ");
 
@@ -5480,7 +5481,7 @@ bool MeshVisitor(const tinyusdz::Path &abs_path, const tinyusdz::Prim &prim,
         }
         return false;
       }
-      visitorEnv->converter->meshMap.add(abs_path.full_path_name(), mesh_id);
+      visitorEnv->converter->meshMap.add(visitorEnv->env->usd_filename + abs_path.full_path_name(), mesh_id);
 
       visitorEnv->converter->meshes.emplace_back(std::move(rmesh));
     }
@@ -5875,9 +5876,10 @@ bool RenderSceneConverter::BuildNodeHierarchyImpl(
 
   const tinyusdz::Prim *prim = node.prim;
   if (prim) {
+    const PrimMeta& metas = prim->metas();
     rnode.prim_name = prim->element_name();
     rnode.abs_path = primPath;
-    rnode.display_name = prim->metas().displayName.value_or("");
+    rnode.display_name = metas.displayName.value_or("");
 
     DCOUT("rnode.prim_name " << rnode.prim_name);
     DCOUT("node.local_mat " << node.get_local_matrix());
@@ -5893,8 +5895,8 @@ bool RenderSceneConverter::BuildNodeHierarchyImpl(
       rnode.nodeType = NodeType::Mesh;
       rnode.has_resetXform = node.has_resetXformStack();
 
-      if (meshMap.count(primPath)) {
-        rnode.id = int32_t(meshMap.at(primPath));
+      if (meshMap.count(env.usd_filename + primPath)) {
+        rnode.id = int32_t(meshMap.at(env.usd_filename + primPath));
       } else {
         rnode.id = -1;
       }
@@ -5952,6 +5954,57 @@ bool RenderSceneConverter::BuildNodeHierarchyImpl(
       rnode.global_matrix = node.get_world_matrix();
       rnode.has_resetXform = node.has_resetXformStack();
       rnode.nodeType = NodeType::Xform;
+    }
+    std::vector<std::string> asset_paths;
+    if (metas.references) {
+      const ListEditQual &qual = metas.references.value().first;
+      const auto &refecences = metas.references.value().second;
+      if (qual == ListEditQual::ResetToExplicit || qual == ListEditQual::Prepend) {
+        for (const auto &reference : refecences)
+          asset_paths.emplace_back(reference.asset_path.GetAssetPath());
+      }
+    }
+    if (metas.payload) {
+      const ListEditQual &qual = metas.payload.value().first;
+      const auto &payloads = metas.payload.value().second;
+      if (qual == ListEditQual::ResetToExplicit || qual == ListEditQual::Prepend) {
+        for (const auto &payload : payloads)
+          asset_paths.emplace_back(payload.asset_path.GetAssetPath());
+      }
+    }
+    for (std::string& asset_path : asset_paths) {
+      std::string asset_abs_path = env.asset_resolver.resolve(asset_path);
+      if (!asset_abs_path.empty()) {
+        if (sub_stages.find(asset_abs_path) == sub_stages.end()) {
+          std::string warn;
+          std::string err;
+          tinyusdz::Stage stage;
+          if (tinyusdz::LoadUSDFromFile(asset_abs_path, &stage, &warn, &err)) {
+            tinyusdz::tydra::RenderSceneConverterEnv env(stage);
+            env.usd_filename = asset_abs_path;
+            env.set_search_paths({tinyusdz::io::GetBaseDir(asset_abs_path)});
+            MeshVisitorEnv menv;
+            menv.env = &env;
+            menv.converter = this;
+            tydra::VisitPrims(stage, MeshVisitor, &menv, &err);
+            sub_stages.emplace(asset_abs_path, std::move(stage));
+          }
+        }
+        auto it = sub_stages.find(asset_abs_path);
+        if (it != sub_stages.end()) {
+          tinyusdz::tydra::RenderSceneConverterEnv env(it->second);
+          env.usd_filename = asset_abs_path;
+          env.set_search_paths({tinyusdz::io::GetBaseDir(asset_abs_path)});
+          XformNode xform_node;
+          if (BuildXformNodeFromStage(it->second, &xform_node, env.timecode)) {
+            for (const auto &rootNode : xform_node.children) {
+              Node root_node;
+              BuildNodeHierarchyImpl(env, /* root */ "", rootNode, root_node);
+              rnode.children.emplace_back(std::move(root_node));
+            }
+          }
+        }
+      }
     }
   }
 

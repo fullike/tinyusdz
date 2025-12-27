@@ -1264,7 +1264,7 @@ bool CrateReader::ReadTokenListOp(ListOp<value::token> *d) {
       return false;
     }
 
-    d->SetDeletedItems(items);
+    //d->SetDeletedItems(items);
   }
 
   if (h.HasOrderedItems()) {
@@ -1377,7 +1377,7 @@ bool CrateReader::ReadStringListOp(ListOp<std::string> *d) {
       return false;
     }
 
-    d->SetDeletedItems(items);
+    //d->SetDeletedItems(items);
   }
 
   if (h.HasOrderedItems()) {
@@ -1491,7 +1491,7 @@ bool CrateReader::ReadPathListOp(ListOp<Path> *d) {
       return false;
     }
 
-    d->SetDeletedItems(items);
+    //d->SetDeletedItems(items);
   }
 
   if (h.HasOrderedItems()) {
@@ -1690,7 +1690,7 @@ bool CrateReader::ReadListOp(ListOp<T> *d) {
       return false;
     }
 
-    d->SetDeletedItems(items);
+    //d->SetDeletedItems(items);
   }
 
   if (h.HasOrderedItems()) {
@@ -2636,7 +2636,7 @@ bool CrateReader::UnpackValueRep(const crate::ValueRep &rep,
     }
     case crate::CrateDataTypeId::CRATE_DATA_TYPE_UCHAR: {
       NON_ARRAY_UNSUPPORTED_CHECK(dty)
-      TODO_IMPLEMENT(dty)
+      //TODO_IMPLEMENT(dty)
     }
     case crate::CrateDataTypeId::CRATE_DATA_TYPE_INT: {
       NON_ARRAY_UNSUPPORTED_CHECK(dty)

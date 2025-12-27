@@ -1655,6 +1655,7 @@ class RenderSceneConverter {
   std::vector<BufferData> buffers;
   std::vector<SkelHierarchy> skeletons;
   std::vector<Animation> animations;
+  std::map<std::string, Stage> sub_stages;
 
   ///
   /// Convert GeomMesh to renderer-friendly mesh.
