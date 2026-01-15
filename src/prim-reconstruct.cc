@@ -4045,6 +4045,33 @@ bool ReconstructShader<UsdPreviewSurface>(
 }
 
 template <>
+bool ReconstructShader<UsdMdlSurface>(
+    const Specifier &spec,
+    const PropertyMap &properties,
+    const ReferenceList &references,
+    UsdMdlSurface *surface,
+    std::string *warn,
+    std::string *err,
+    const PrimReconstructOptions &options) {
+  (void)spec;
+  (void)references;
+  (void)options;
+
+  std::set<std::string> table;
+  table.insert("info:id"); // `info:id` is already parsed in ReconstructPrim<Shader>
+  for (auto &prop : properties) {
+    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:diffuse_texture", UsdMdlSurface, surface->diffuse_texture)
+    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:reflectionroughness_texture", UsdMdlSurface, surface->reflectionroughness_texture)
+    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:metallic_texture", UsdMdlSurface, surface->metallic_texture)
+    PARSE_TYPED_ATTRIBUTE(table, prop, "inputs:normalmap_texture", UsdMdlSurface, surface->normalmap_texture)
+    ADD_PROPERTY(table, prop, UsdMdlSurface, surface->props)
+    PARSE_PROPERTY_END_MAKE_WARN(table, prop)
+  }
+
+  return true;
+}
+
+template <>
 bool ReconstructShader<UsdUVTexture>(
     const Specifier &spec,
     const PropertyMap &properties,
@@ -4861,16 +4888,14 @@ bool ReconstructPrim<Shader>(
     shader->info_id = kUsdTransform2d;
     shader->value = transform;
   } else {
-    // Reconstruct as generic ShaderNode
-    ShaderNode surface;
-    if (!ReconstructShader<ShaderNode>(spec,properties, references,
+    UsdMdlSurface surface;
+    if (!ReconstructShader<UsdMdlSurface>(spec, properties, references,
                                               &surface, warn, err, options)) {
-      PUSH_ERROR_AND_RETURN("Failed to Reconstruct " << shader_type);
+      PUSH_ERROR_AND_RETURN("Failed to Reconstruct " << kUsdMdlSurface);
     }
-    if (shader_type.size()) {
-      shader->info_id = shader_type;
-    }
+    shader->info_id = kUsdMdlSurface;
     shader->value = surface;
+    DCOUT("info_id = " << shader->info_id);
   }
 
   DCOUT("Shader reconstructed.");
@@ -4902,6 +4927,12 @@ bool ReconstructPrim<Material>(
     PARSE_SHADER_INPUT_CONNECTION_PROPERTY(table, prop, "outputs:displacement",
                                   Material, material->displacement)
     PARSE_SHADER_INPUT_CONNECTION_PROPERTY(table, prop, "outputs:volume",
+                                  Material, material->volume)
+    PARSE_SHADER_INPUT_CONNECTION_PROPERTY(table, prop, "outputs:mdl:surface",
+                                  Material, material->surface)
+    PARSE_SHADER_INPUT_CONNECTION_PROPERTY(table, prop, "outputs:mdl:displacement",
+                                  Material, material->displacement)
+    PARSE_SHADER_INPUT_CONNECTION_PROPERTY(table, prop, "outputs:mdl:volume",
                                   Material, material->volume)
     PARSE_UNIFORM_ENUM_PROPERTY(table, prop, kPurpose, Purpose, PurposeEnumHandler, Material,
                        material->purpose, options.strict_allowedToken_check)

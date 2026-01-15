@@ -1750,6 +1750,11 @@ class RenderSceneConverter {
                                    const tinyusdz::UsdPreviewSurface &shader,
                                    PreviewSurfaceShader *pss_out);
 
+  bool ConvertMdlSurfaceShader(const RenderSceneConverterEnv &env,
+                                   const tinyusdz::Path &shader_abs_path,
+                                   const tinyusdz::UsdMdlSurface &shader,
+                                   PreviewSurfaceShader *pss_out);
+
   ///
   /// Convert UsdUvTexture to renderer-friendly UVTexture
   ///
@@ -1805,6 +1810,12 @@ class RenderSceneConverter {
       const RenderSceneConverterEnv &env, const Path &shader_abs_path,
       const TypedAttributeWithFallback<Animatable<T>> &param,
       const std::string &param_name, ShaderParam<Dty> &dst_param);
+
+  template <typename Dty>
+  bool ConvertMdlSurfaceShaderParam(
+       const RenderSceneConverterEnv &env, const Path &shader_abs_path,
+       const TypedAttribute<Animatable<value::AssetPath>> &param,
+       const std::string &param_name, ShaderParam<Dty> &dst_param);
 
   ///
   /// Build (single) vertex indices for RenderMesh.

@@ -4907,9 +4907,9 @@ bool RenderSceneConverter::ConvertPreviewSurfaceShaderParam(
     const RenderSceneConverterEnv &env, const Path &shader_abs_path,
     const TypedAttributeWithFallback<Animatable<T>> &param,
     const std::string &param_name, ShaderParam<Dty> &dst_param) {
-  if (!param.authored()) {
-    return true;
-  }
+  // if (!param.authored()) {
+  //   return true;
+  // }
 
   if (param.is_blocked()) {
     PUSH_ERROR_AND_RETURN(fmt::format("{} attribute is blocked.", param_name));
@@ -5088,6 +5088,48 @@ bool RenderSceneConverter::ConvertPreviewSurfaceShader(
   return true;
 }
 
+template <typename Dty>
+bool RenderSceneConverter::ConvertMdlSurfaceShaderParam(
+    const RenderSceneConverterEnv &env, const Path &shader_abs_path,
+    const TypedAttribute<Animatable<value::AssetPath>> &param,
+    const std::string &param_name, ShaderParam<Dty> &dst_param) {
+
+  UsdUVTexture tex;
+  tex.file = param;
+  Path texPath;
+  UVTexture rtex;
+  AssetInfo assetInfo;
+  if (!ConvertUVTexture(env, texPath, assetInfo, tex, &rtex)) {
+    PUSH_ERROR_AND_RETURN(fmt::format(
+        "Failed to convert UVTexture connected to {}", param_name));
+  }
+  rtex.connectedOutputChannel = tydra::UVTexture::Channel::RGB;
+ 
+  uint64_t texId = textures.size();
+  textures.push_back(rtex);
+
+  textureMap.add(texId, shader_abs_path.prim_part() + "." + param_name);
+
+  DCOUT(fmt::format("TexId {}.{} = {}",
+                    shader_abs_path.prim_part(), param_name, texId));
+
+  dst_param.texture_id = int32_t(texId);
+
+  return true;
+}
+
+bool RenderSceneConverter::ConvertMdlSurfaceShader(
+  const RenderSceneConverterEnv &env, const Path &shader_abs_path,
+  const UsdMdlSurface &shader, PreviewSurfaceShader *rshader_out) {
+  PreviewSurfaceShader rshader;
+  ConvertMdlSurfaceShaderParam(env, shader_abs_path, shader.diffuse_texture, "diffuse_texture", rshader.diffuseColor);
+  ConvertMdlSurfaceShaderParam(env, shader_abs_path, shader.reflectionroughness_texture, "reflectionroughness_texture", rshader.roughness);
+  ConvertMdlSurfaceShaderParam(env, shader_abs_path, shader.metallic_texture, "metallic_texture", rshader.metallic);
+  ConvertMdlSurfaceShaderParam(env, shader_abs_path, shader.normalmap_texture, "normalmap_texture", rshader.normal); 
+  (*rshader_out) = rshader;
+  return true;
+}
+
 bool RenderSceneConverter::ConvertMaterial(const RenderSceneConverterEnv &env,
                                            const Path &mat_abs_path,
                                            const tinyusdz::Material &material,
@@ -5107,7 +5149,7 @@ bool RenderSceneConverter::ConvertMaterial(const RenderSceneConverterEnv &env,
   //
   // surface shader
   {
-    if (material.surface.authored()) {
+    if (true) {
       auto paths = material.surface.get_connections();
       DCOUT("paths = " << paths);
       // must have single targetPath.
@@ -5159,27 +5201,26 @@ bool RenderSceneConverter::ConvertMaterial(const RenderSceneConverterEnv &env,
 
     // Currently must be UsdPreviewSurface
     const UsdPreviewSurface *psurface = shader->value.as<UsdPreviewSurface>();
-    if (!psurface) {
-      PUSH_ERROR_AND_RETURN(
-          fmt::format("Shader's info:id must be UsdPreviewSurface, but got {}",
-                      shader->info_id));
+    if (psurface) {
+      PreviewSurfaceShader pss;
+      if (!ConvertPreviewSurfaceShader(env, surfacePath, *psurface, &pss)) {
+        PUSH_ERROR_AND_RETURN(fmt::format(
+            "Failed to convert UsdPreviewSurface : {}", surfacePath.prim_part()));
+      }
+  
+      rmat.surfaceShader = pss;
+    }
+    const UsdMdlSurface *msurface = shader->value.as<UsdMdlSurface>();
+    if (msurface) {
+      PreviewSurfaceShader pss;
+      if (!ConvertMdlSurfaceShader(env, surfacePath, *msurface, &pss)) {
+        PUSH_ERROR_AND_RETURN(fmt::format(
+            "Failed to convert UsdMdlSurface : {}", surfacePath.prim_part()));
+      }
+  
+      rmat.surfaceShader = pss;
     }
 
-    // prop part must be `outputs:surface` for now.
-    if (surfacePath.prop_part() != "outputs:surface") {
-      PUSH_ERROR_AND_RETURN(
-          fmt::format("{}'s outputs:surface connection must point to property "
-                      "`outputs:surface`, but got `{}`",
-                      mat_abs_path.full_path_name(), surfacePath.prop_part()));
-    }
-
-    PreviewSurfaceShader pss;
-    if (!ConvertPreviewSurfaceShader(env, surfacePath, *psurface, &pss)) {
-      PUSH_ERROR_AND_RETURN(fmt::format(
-          "Failed to convert UsdPreviewSurface : {}", surfacePath.prim_part()));
-    }
-
-    rmat.surfaceShader = pss;
   }
 
   DCOUT("Converted Material: " << mat_abs_path);

@@ -24,6 +24,7 @@ constexpr auto kShaderNode = "ShaderNode";
 constexpr auto kShaderInfoId = "info:id";
 
 constexpr auto kUsdPreviewSurface = "UsdPreviewSurface";
+constexpr auto kUsdMdlSurface = "UsdMdlSurface";
 constexpr auto kUsdUVTexture = "UsdUVTexture";
 constexpr auto kUsdTransform2d = "UsdTransform2d";
 constexpr auto kUsdPrimvarReader_int = "UsdPrimvarReader_int";
@@ -243,6 +244,14 @@ struct UsdPreviewSurface : ShaderNode {
 
 };
 
+struct UsdMdlSurface : ShaderNode {
+
+  TypedAttribute<Animatable<value::AssetPath>> diffuse_texture; //inputs:diffuse_texture
+  TypedAttribute<Animatable<value::AssetPath>> reflectionroughness_texture; //inputs:reflectionroughness_texture
+  TypedAttribute<Animatable<value::AssetPath>> metallic_texture; //inputs:metallic_texture
+  TypedAttribute<Animatable<value::AssetPath>> normalmap_texture; //inputs:normalmap_texture
+};
+
 // Transform texture coordinates.
 struct UsdTransform2d : ShaderNode {
 
@@ -306,6 +315,8 @@ DEFINE_TYPE_TRAIT(ShaderNode, kShaderNode,
                   TYPE_ID_IMAGING_SHADER_NODE, 1);
 DEFINE_TYPE_TRAIT(UsdPreviewSurface, kUsdPreviewSurface,
                   TYPE_ID_IMAGING_PREVIEWSURFACE, 1);
+DEFINE_TYPE_TRAIT(UsdMdlSurface, kUsdMdlSurface,
+                  TYPE_ID_IMAGING_MDLSURFACE, 1);
 DEFINE_TYPE_TRAIT(UsdUVTexture, kUsdUVTexture, TYPE_ID_IMAGING_UVTEXTURE, 1);
 DEFINE_TYPE_TRAIT(UsdPrimvarReader_float, kUsdPrimvarReader_float,
                   TYPE_ID_IMAGING_PRIMVAR_READER_FLOAT, 1);
